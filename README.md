@@ -1,2 +1,2 @@
-# PlatformIO_ESP32_S2_DHZ
-PlatformIO_ESP32_S2_DHZ_monitoring servers room
+# PlatformIO_ESP32_-3_server_DHZ
+PlatformIO_ESP32_s2_server_DHZ
