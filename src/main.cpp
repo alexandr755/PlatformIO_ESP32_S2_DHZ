@@ -244,7 +244,10 @@ void Read_AHT10_INA226( void *pvParameters)
       Serial.print("BusVoltage = ");
       Serial.println(BusVoltage);
       showFloat(disp,temp.temperature);  // Вывод дробных чисел
-      disp.display(3, _i);             // "V"
+      //disp.displayByte(3, _H);
+      disp.displayByte(3, _t);
+      //disp.displayByte(2, _b);
+      //disp.displayByte(2, _U);	
       //disp.displayInt((int)temp.temperature);
    vTaskDelay( 11000 / portTICK_PERIOD_MS );
    };
