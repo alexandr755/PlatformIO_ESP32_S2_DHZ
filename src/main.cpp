@@ -25,6 +25,13 @@ GyverTM1637 disp(CLK, DIO);
 uint32_t Now, clocktimer;
 boolean flag;
 //
+// активация датчика AHT10
+Adafruit_AHTX0 aht;
+Adafruit_Sensor *aht_humidity, *aht_temp;
+// активация датчика INA226
+INA226 INA(0x40);
+float BusVoltage;
+//
 GTimer myTimer(MS);     // создать миллисекундный таймер
 // put function declarations here:
 
@@ -43,6 +50,47 @@ QueueHandle_t queue_1;
 WiFiMulti WiFiMulti;
 
 //void sshTask(void* pvParameter);
+void getVoltsCurrent();
+void getTemPHum();
+void check_AHT10andINA226()
+{
+  /// проверка есть ли датчик temp@him
+  Serial.println("Adafruit AHT10/AHT20 test!");
+  if (!aht.begin())
+  {
+    Serial.println("Failed to find AHT10/AHT20 chip");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("AHT10/AHT20 Found!");
+  aht_temp = aht.getTemperatureSensor();
+  aht_temp->printSensorDetails();
+
+  aht_humidity = aht.getHumiditySensor();
+  aht_humidity->printSensorDetails();
+    /// проверка есть ли датчик INA226
+  Serial.print("SDA connect to - ");
+  Serial.println(SDA);
+  Serial.print("SCL connect to - ");
+  Serial.println(SCL);
+  Serial.println(__FILE__);
+  Serial.print("INA226_LIB_VERSION: ");
+  Serial.println(INA226_LIB_VERSION);
+  Wire.begin();
+
+  if (!INA.begin())
+  {
+    Serial.println("could not connect. Fix and Reboot");
+  }
+  INA.setMaxCurrentShunt(1, 0.002);
+  INA.setBusVoltageConversionTime(7);
+  
+  //////
+
+}
+
 void ints() {
   // тупо отправляем цифры
   disp.displayInt(-999);
@@ -105,6 +153,18 @@ void scrolls() {
   delay(1000);
 }
 
+void showFloat(GyverTM1637 &disp, float num) {
+  int integer = abs((int)num);
+  int decimal = abs((int)(num * 10) % 10);
+  
+  if (num < 0) disp.display(0, 10);  // Минус
+  else disp.display(0, integer / 10);
+  
+  disp.display(1, integer % 10);
+  disp.display(2, decimal);
+  disp.point(1);
+}
+
 void Task1code( void *pvParameters) 
 {
   pinMode(LED, OUTPUT); 
@@ -160,14 +220,42 @@ void task_read_temp(void *pvParameters)
     // Пауза 10 секунд
     //vTaskDelay(pdMS_TO_TICKS(10000)); //100cek = 100000 / 1s = 1000ms
     xQueueSend(queue_1, &temp_celsius, portMAX_DELAY);
-    vTaskDelay( 10000 / portTICK_PERIOD_MS ); 
+    vTaskDelay( 50000 / portTICK_PERIOD_MS ); 
   };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
 }
 
+void Read_AHT10_INA226( void *pvParameters) 
+{
+  Serial.print("Task1Read_AHT10_INA226 ");
+    while(1) { //infinite loop
+      sensors_event_t humidity, temp;
+      aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
+      BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+      //if (temp.temperature > 23 || humidity.relative_humidity > 60 || BusVoltage < 21)
+      Serial.print("Temp: ");
+      Serial.print(temp.temperature);
+      Serial.print(" C");
+      Serial.print("\t\t");
+      Serial.print("Humidity: ");
+      Serial.print(humidity.relative_humidity);
+      Serial.println(" \%");
+      Serial.print("BusVoltage = ");
+      Serial.println(BusVoltage);
+      showFloat(disp,temp.temperature);  // Вывод дробных чисел
+      disp.display(3, _i);             // "V"
+      //disp.displayInt((int)temp.temperature);
+   vTaskDelay( 11000 / portTICK_PERIOD_MS );
+   };
+  // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
+  vTaskDelete(NULL);
+} 
+
 void setup() {
-  ////// WIFI Connect
+  Wire.begin();
+  check_AHT10andINA226();
+    ////// WIFI Connect
   delay(10);
 
   WiFiMulti.addAP(WIFI_SSID, WIFI_PASS);
@@ -226,6 +314,8 @@ void setup() {
   xTaskCreate(Task1code,"TaskLED_BLINK",10000,NULL,1,NULL);
   //xTaskCreatePinnedToCore(Task1code, "Task2", 10000, NULL, 0, NULL,  0);
    delay(500);
+  xTaskCreate(Read_AHT10_INA226,"Read_AHT10_INA226",10000,NULL,5,NULL);
+   delay(500);
   ///SSH_task_start
   ///xTaskCreatePinnedToCore(sshTask, "ssh-connect", configSTACK, NULL,(tskIDLE_PRIORITY + 3), &sshHandle,portNUM_PROCESSORS); 
   ///delay(500);
@@ -236,7 +326,7 @@ void setup() {
   disp.clear();
   disp.brightness(7);  // яркость, 0 - 7 (минимум - максимум)
   ///
-  myTimer.setInterval(10000);    // 300000 настроить интервал 1 мин = 60000ms 5мин
+  myTimer.setInterval(1200000);    // 300000 настроить интервал 1 мин = 60000ms 5мин
 }
 
 void loop() {
@@ -247,14 +337,69 @@ void loop() {
   //delay(2000);
   //Serial.println(xPortGetCoreID());
   //delay(1000);
+ 
   if (myTimer.isReady())
   { // Timer is complite
-  ints();
-  scrolls();
-  fadeBlink();
+  //ints();
+  //scrolls();
+  //fadeBlink();
+  getVoltsCurrent();
+  getTemPHum();
 
   }
+ 
 }
+
+void getTemPHum()
+{
+  //  /* Get a new normalized sensor event */
+  sensors_event_t humidity;
+  sensors_event_t temp;
+  aht_humidity->getEvent(&humidity);
+  aht_temp->getEvent(&temp);
+
+  Serial.print("\t\tTemperature ");
+  Serial.print(temp.temperature);
+  Serial.println(" deg C");
+
+  /* Display the results (humidity is measured in % relative humidity (% rH) */
+  Serial.print("\t\tHumidity: ");
+  Serial.print(humidity.relative_humidity);
+  Serial.println(" % rH");
+  Serial.print("\t\tTemperature: ");
+  Serial.print(temp.temperature);
+  Serial.println(" degrees C");
+
+  delay(100);
+
+  /*//   serial plotter friendly format
+  Serial.print(temp.temperature);
+  Serial.print(",");
+
+  Serial.print(humidity.relative_humidity);
+
+  Serial.println();
+  delay(10);
+  */
+}
+
+void getVoltsCurrent()
+{
+  Serial.println("\nBUS\tSHUNT\tCURRENT\tPOWER");
+  for (int i = 0; i < 1; i++)
+  {
+    Serial.print(INA.getBusVoltage(), 3);
+    Serial.print("\t");
+    Serial.print(INA.getShuntVoltage_mV(), 3);
+    Serial.print("\t");
+    Serial.print(INA.getCurrent_mA(), 3);
+    Serial.print("\t");
+    Serial.print(INA.getPower_mW(), 3);
+    Serial.println();
+    delay(1000);
+  }
+}
+
 /* add comment
 void sshTask(void* pvParameter) {
   SSH ssh{};
