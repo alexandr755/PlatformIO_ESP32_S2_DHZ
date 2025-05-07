@@ -14,10 +14,13 @@
 #include "INA226.h"
 #include "GyverTM1637.h"
 #define LED 15  // 8-ый выходной цифровой контакт LED
+#define PIN_LED 15
 #define WIFI_SSID "TP-LINK_17"
 #define WIFI_PASS "rob17rob17"
 #define WIFI_SSID2 "Wi-Fi-Rab"
 #define WIFI_PASS2 "kamsk1975"
+#define WIFI_SSID3 "Tp-Link_Grand3"
+#define WIFI_PASS3 "Kamsk1975"
 ///TM display
 #define CLK 2
 #define DIO 1
@@ -32,13 +35,29 @@ Adafruit_Sensor *aht_humidity, *aht_temp;
 INA226 INA(0x40);
 float BusVoltage;
 //
+// Используйте @myidbot, чтобы получить ID пользователя или группы
+// Помните, что бот сможет вам писать только после нажатия
+// вами кнопки /start
+#define CHAT_ID "489077210"
+#define CHAT_ID_GROUP "-717637187"
+///////
+// Запустите бот Telegram
+#define BOTtoken "5129566661:AAENLAD9pSK9eC13roIVjyYqwFrs6xUAlxA" // укажите токен бота
+///////
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOTtoken, client);
+// Каждую секунду проверяет новые сообщения
+int botRequestDelay = 1000; // 1000
+unsigned long lastTimeBotRan;
+///////////
+//
 GTimer myTimer(MS);     // создать миллисекундный таймер
 // put function declarations here:
 
 const unsigned int configSTACK = 40960;
 TaskHandle_t sshHandle = NULL;
 QueueHandle_t queue_1;
-
+SemaphoreHandle_t xWIFIMutex;
 ///////////
 //IPAddress local_IP(192, 168, 17, 16);
 //IPAddress gateway(192, 168, 17, 1);
@@ -91,6 +110,72 @@ void check_AHT10andINA226()
 
 }
 
+String getReadings()
+{
+  sensors_event_t humidity, temp;
+  aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data INA.getBusVoltage()
+  BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+  String message = "Temp DHZ-130: " + String(temp.temperature) + " ºC \n";
+  message += "Hum DHZ-130: " + String(humidity.relative_humidity) + " % \n";
+  message += "Volts_Bat DHZ-130: " + String(BusVoltage) + " V \n";
+  return message;
+}
+
+/////////
+// Handle what happens when you receive new messages
+void handleNewMessages(int numNewMessages)
+{
+  Serial.println("handleNewMessages");
+  Serial.println(String(numNewMessages));
+
+  for (int i = 0; i < numNewMessages; i++)
+  {
+    // Chat id of the requester
+    String chat_id = String(bot.messages[i].chat_id);
+    if (chat_id == CHAT_ID || chat_id == CHAT_ID_GROUP)
+      ;
+    else
+    {
+      bot.sendMessage(chat_id, "Unauthorized user", "");
+      continue;
+    }
+
+    // Print the received message
+    String text = bot.messages[i].text;
+    Serial.println(text);
+
+    String from_name = bot.messages[i].from_name;
+
+    if (text == "/start")
+    {
+      String welcome = "Welcome to DHZ-130, " + from_name + ".\n";
+      welcome += "Use the following command to get current readings.\n";
+      welcome += "/readings \n";
+      welcome += "Use the /ON for turn on.\n";
+      welcome += "/ON \n";
+      welcome += "Use the /OFF for turn off .\n";
+      welcome += "/OFF \n";
+      bot.sendMessage(chat_id, welcome, "");
+    }
+
+    if (text == "/readings")
+    {
+      String readings = getReadings();
+      bot.sendMessage(chat_id, readings, "");
+    }
+    if (text == "/ON")
+    {
+      digitalWrite(PIN_LED, HIGH);
+      bot.sendMessage(chat_id, "Нагрузка DHZ-130 включенна ON", "");
+    }
+    if (text == "/OFF")
+    {
+      digitalWrite(PIN_LED, LOW);
+      bot.sendMessage(chat_id, "Нагрузка DHZ-130 выключенна OFF", "");
+    }
+  }
+}
+
 
 void fadeBlink() {
   // пишем HELL
@@ -121,7 +206,7 @@ void showFloat(GyverTM1637 &disp, float num) {
   disp.point(1);
 }
 
-void Task1code( void *pvParameters) 
+void Blink_LED( void *pvParameters) 
 {
   pinMode(LED, OUTPUT); 
   Serial.print("Task1 running on core ");
@@ -176,20 +261,50 @@ void task_read_temp(void *pvParameters)
     // Пауза 10 секунд
     //vTaskDelay(pdMS_TO_TICKS(10000)); //100cek = 100000 / 1s = 1000ms
     xQueueSend(queue_1, &temp_celsius, portMAX_DELAY);
-    vTaskDelay( 50000 / portTICK_PERIOD_MS ); 
+    vTaskDelay( 500000 / portTICK_PERIOD_MS ); 
   };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
 }
 
-void Read_AHT10_INA226( void *pvParameters) 
+// чтение сообщений с телеграмм
+void task_read_message_from_telegramm(void *pvParameters)
 {
-  Serial.print("Task1Read_AHT10_INA226 ");
+  // Организуем бесконечный цикл
+  while(1) {
+    if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
+    // Выводим сообщение в терминал
+  Serial.println("task_read_message_from_telegramm: ");
+  if (millis() > lastTimeBotRan + botRequestDelay)
+  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    while (numNewMessages)
+    {
+      Serial.println("got response");
+      handleNewMessages(numNewMessages);
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+    lastTimeBotRan = millis();
+  }
+  xSemaphoreGive(xWIFIMutex);
+  }
+    //xQueueSend(queue_1, &temp_celsius, portMAX_DELAY);
+    vTaskDelay( 2000 / portTICK_PERIOD_MS ); 
+  };
+  // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
+  vTaskDelete(NULL);
+}
+
+void check_Temp_Volts_Him( void *pvParameters) 
+{
+  Serial.println("check_Temp_Volts_Him");
     while(1) { //infinite loop
+      if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-      //if (temp.temperature > 23 || humidity.relative_humidity > 60 || BusVoltage < 21)
+      if (temp.temperature > 23 || humidity.relative_humidity > 60 || BusVoltage < 21)
+      { 
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
       Serial.print(" C");
@@ -199,6 +314,13 @@ void Read_AHT10_INA226( void *pvParameters)
       Serial.println(" \%");
       Serial.print("BusVoltage = ");
       Serial.println(BusVoltage);
+      bot.sendMessage(CHAT_ID, "Внимание! Превышены температура/влажность/батарея в DHZ-130", "");
+      String readings = getReadings();
+      bot.sendMessage(CHAT_ID, readings, "");
+      bot.sendMessage(CHAT_ID_GROUP, "Внимание! Превышена температура/влажность/батарея DHZ-130", "");
+      bot.sendMessage(CHAT_ID_GROUP, readings, "");
+      }
+      /*     
       showFloat(disp,temp.temperature);  // Вывод дробных чисел trmperature
       disp.displayByte(3, _t);
       delay(3000);
@@ -210,7 +332,52 @@ void Read_AHT10_INA226( void *pvParameters)
       //disp.displayByte(2, _b);
       //disp.displayByte(2, _U);	
       //disp.displayInt((int)temp.temperature);
-   vTaskDelay( 11000 / portTICK_PERIOD_MS );
+      */
+     xSemaphoreGive(xWIFIMutex); 
+      } 
+   vTaskDelay( 20000 / portTICK_PERIOD_MS );
+   };
+  // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
+  vTaskDelete(NULL);
+} 
+void Read_AHT10_INA226( void *pvParameters) 
+{
+  Serial.print("Task1Read_AHT10_INA226 ");
+    while(1) { //infinite loop
+      sensors_event_t humidity, temp;
+      aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
+      BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+      /*
+      if (temp.temperature > 23 || humidity.relative_humidity > 60 || BusVoltage < 21)
+      { 
+      Serial.print("Temp: ");
+      Serial.print(temp.temperature);
+      Serial.print(" C");
+      Serial.print("\t\t");
+      Serial.print("Humidity: ");
+      Serial.print(humidity.relative_humidity);
+      Serial.println(" \%");
+      Serial.print("BusVoltage = ");
+      Serial.println(BusVoltage);
+      bot.sendMessage(CHAT_ID, "Внимание! Превышены температура/влажность/батарея в DHZ-130", "");
+      String readings = getReadings();
+      bot.sendMessage(CHAT_ID, readings, "");
+      bot.sendMessage(CHAT_ID_GROUP, "Внимание! Превышена температура/влажность/батарея DHZ-130", "");
+      bot.sendMessage(CHAT_ID_GROUP, readings, "");
+      }
+      */
+      showFloat(disp,temp.temperature);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _t);
+      delay(3000);
+      showFloat(disp,humidity.relative_humidity);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _H);
+      delay(3000);
+      showFloat(disp,BusVoltage);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _U);
+      //disp.displayByte(2, _b);
+      //disp.displayByte(2, _U);	
+      //disp.displayInt((int)temp.temperature);
+   vTaskDelay( 12000 / portTICK_PERIOD_MS );
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -224,6 +391,7 @@ void setup() {
 
   WiFiMulti.addAP(WIFI_SSID, WIFI_PASS);
   WiFiMulti.addAP(WIFI_SSID2, WIFI_PASS2);
+  WiFiMulti.addAP(WIFI_SSID3, WIFI_PASS3);
 
   Serial.print("\n\nWaiting for WiFi... ");
 
@@ -263,6 +431,9 @@ void setup() {
   Serial.print("MAC address: ");
   Serial.println(WiFi.macAddress());
   Serial.println("TEst is finished222");
+  #ifdef ESP32
+  client.setCACert(TELEGRAM_CERTIFICATE_ROOT); // Add root certificate for api.telegram.org
+  #endif
   ///
   // put your setup code here, to run once:
   Serial.println("Setup has finished");
@@ -272,25 +443,36 @@ void setup() {
   if (queue_1 == NULL) {
   Serial.println("Queue can not be created");
   }
-
-  xTaskCreate(task_print_temp,"task_print_temp",10000,NULL,3,NULL);
-   delay(500);
-  xTaskCreate(Task1code,"TaskLED_BLINK",10000,NULL,1,NULL);
+  // Создаём мьютекс
+  xWIFIMutex = xSemaphoreCreateMutex();
+  if (xWIFIMutex == NULL) {
+    Serial.println("Ошибка создания мьютекса!");
+    while (1);  // Бесконечный цикл при ошибке
+  }
+  //xTaskCreate(task_print_temp,"task_print_temp",10000,NULL,3,NULL);
+  // delay(500);
+  xTaskCreate(Blink_LED,"TaskLED_BLINK",10000,NULL,1,NULL);
   //xTaskCreatePinnedToCore(Task1code, "Task2", 10000, NULL, 0, NULL,  0);
    delay(500);
   xTaskCreate(Read_AHT10_INA226,"Read_AHT10_INA226",10000,NULL,5,NULL);
    delay(500);
+  xTaskCreate(task_read_message_from_telegramm,"task_read_message_from_telegramm",10000,NULL,6,NULL);
+   delay(500);
+  xTaskCreate(check_Temp_Volts_Him,"check_Temp_Volts_Him",10000,NULL,6,NULL);
+   delay(500);  
   ///SSH_task_start
   ///xTaskCreatePinnedToCore(sshTask, "ssh-connect", configSTACK, NULL,(tskIDLE_PRIORITY + 3), &sshHandle,portNUM_PROCESSORS); 
   ///delay(500);
   /// READ_temp
-  xTaskCreatePinnedToCore(task_read_temp, "task_read_temp", 10000, NULL,(tskIDLE_PRIORITY + 1), NULL,portNUM_PROCESSORS); 
-  delay(500);
+  //xTaskCreatePinnedToCore(task_read_temp, "task_read_temp", 10000, NULL,(tskIDLE_PRIORITY + 1), NULL,portNUM_PROCESSORS); 
+  //delay(500);
   //// Init display
   disp.clear();
-  disp.brightness(7);  // яркость, 0 - 7 (минимум - максимум)
+  disp.brightness(6);  // яркость, 0 - 7 (минимум - максимум)
   ///
   myTimer.setInterval(1200000);    // 300000 настроить интервал 1 мин = 60000ms 5мин
+  ///
+
 }
 
 void loop() {
@@ -301,17 +483,17 @@ void loop() {
   //delay(2000);
   //Serial.println(xPortGetCoreID());
   //delay(1000);
- 
+  /*
   if (myTimer.isReady())
   { // Timer is complite
   //ints();
   //scrolls();
   //fadeBlink();
-  getVoltsCurrent();
-  getTemPHum();
+  //getVoltsCurrent();
+  //getTemPHum();
 
   }
- 
+  */
 }
 
 void getTemPHum()
