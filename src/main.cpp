@@ -91,25 +91,7 @@ void check_AHT10andINA226()
 
 }
 
-void ints() {
-  // тупо отправляем цифры
-  disp.displayInt(-999);
-  delay(500);
-  disp.displayInt(-99);
-  delay(500);
-  disp.displayInt(-9);
-  delay(500);
-  disp.displayInt(0);
-  delay(500);
-  disp.displayInt(6);
-  delay(500);
-  disp.displayInt(66);
-  delay(500);
-  disp.displayInt(666);
-  delay(500);
-  disp.displayInt(6666);
-  delay(500);
-}
+
 void fadeBlink() {
   // пишем HELL
   disp.displayByte(_H, _E, _L, _L);
@@ -125,32 +107,6 @@ void fadeBlink() {
       delay(40);
     }
   }
-}
-void scrolls() {
-  // прокрутка массив ЦИФР
-  byte digs[4] = {3, 5, 7, 1};
-  disp.scroll(digs, 100);     // скорость прокрутки 100
-  delay(1000);
-
-  // прокрутка прицельно (ячейка, ЦИФРА, скорость)
-  disp.scroll(0, 8, 200);
-  delay(1000);
-
-  disp.clear();
-  delay(1000);
-  for (byte i = 0; i < 10; i++) {
-    disp.scroll(3, i, 50);
-    delay(400);
-  }
-
-  // прокрутка массива БАЙТ
-  byte troll[4] = {_t, _r, _o, _l};
-  disp.scrollByte(troll, 100);
-  delay(1000);
-
-  // прицельная прокрутка БАЙТА (ячейка, байт, скорость)
-  disp.scrollByte(2, _G, 50);
-  delay(1000);
 }
 
 void showFloat(GyverTM1637 &disp, float num) {
@@ -243,9 +199,14 @@ void Read_AHT10_INA226( void *pvParameters)
       Serial.println(" \%");
       Serial.print("BusVoltage = ");
       Serial.println(BusVoltage);
-      showFloat(disp,temp.temperature);  // Вывод дробных чисел
-      //disp.displayByte(3, _H);
+      showFloat(disp,temp.temperature);  // Вывод дробных чисел trmperature
       disp.displayByte(3, _t);
+      delay(3000);
+      showFloat(disp,humidity.relative_humidity);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _H);
+      delay(3000);
+      showFloat(disp,BusVoltage);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _U);
       //disp.displayByte(2, _b);
       //disp.displayByte(2, _U);	
       //disp.displayInt((int)temp.temperature);
