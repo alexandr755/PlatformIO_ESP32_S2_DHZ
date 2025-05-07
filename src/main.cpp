@@ -335,11 +335,52 @@ void check_Temp_Volts_Him( void *pvParameters)
       */
      xSemaphoreGive(xWIFIMutex); 
       } 
-   vTaskDelay( 20000 / portTICK_PERIOD_MS );
+   vTaskDelay( 200000 / portTICK_PERIOD_MS );
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
-} 
+}
+
+void check_Temp_Volts_Him_12Hours( void *pvParameters) 
+{
+  Serial.println("check_Temp_Volts_Him_12Hours");
+    while(1) { //infinite loop
+      if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
+      // 43200000 настроить интервал 1 мин = 60000ms 12ч      
+        sensors_event_t humidity, temp;
+        aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
+        BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+        if (temp.temperature < 23 || humidity.relative_humidity < 60 || BusVoltage >= 21)
+        {
+          Serial.print("Timer is ready ");
+          bot.sendMessage(CHAT_ID, "В серверной DHZ-130 все ОК", "");
+          String readings = getReadings();
+          bot.sendMessage(CHAT_ID, readings, "");
+          bot.sendMessage(CHAT_ID_GROUP, "В серверной DHZ-130 все ОК", "");
+          bot.sendMessage(CHAT_ID_GROUP, readings, "");
+        } 
+      
+      /*     
+      showFloat(disp,temp.temperature);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _t);
+      delay(3000);
+      showFloat(disp,humidity.relative_humidity);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _H);
+      delay(3000);
+      showFloat(disp,BusVoltage);  // Вывод дробных чисел trmperature
+      disp.displayByte(3, _U);
+      //disp.displayByte(2, _b);
+      //disp.displayByte(2, _U);	
+      //disp.displayInt((int)temp.temperature);
+      */
+     xSemaphoreGive(xWIFIMutex); 
+      } 
+   vTaskDelay( 100000 / portTICK_PERIOD_MS );
+   };
+  // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
+  vTaskDelete(NULL);
+}
+
 void Read_AHT10_INA226( void *pvParameters) 
 {
   Serial.print("Task1Read_AHT10_INA226 ");
@@ -347,25 +388,7 @@ void Read_AHT10_INA226( void *pvParameters)
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-      /*
-      if (temp.temperature > 23 || humidity.relative_humidity > 60 || BusVoltage < 21)
-      { 
-      Serial.print("Temp: ");
-      Serial.print(temp.temperature);
-      Serial.print(" C");
-      Serial.print("\t\t");
-      Serial.print("Humidity: ");
-      Serial.print(humidity.relative_humidity);
-      Serial.println(" \%");
-      Serial.print("BusVoltage = ");
-      Serial.println(BusVoltage);
-      bot.sendMessage(CHAT_ID, "Внимание! Превышены температура/влажность/батарея в DHZ-130", "");
-      String readings = getReadings();
-      bot.sendMessage(CHAT_ID, readings, "");
-      bot.sendMessage(CHAT_ID_GROUP, "Внимание! Превышена температура/влажность/батарея DHZ-130", "");
-      bot.sendMessage(CHAT_ID_GROUP, readings, "");
-      }
-      */
+      
       showFloat(disp,temp.temperature);  // Вывод дробных чисел trmperature
       disp.displayByte(3, _t);
       delay(3000);
@@ -451,7 +474,7 @@ void setup() {
   }
   //xTaskCreate(task_print_temp,"task_print_temp",10000,NULL,3,NULL);
   // delay(500);
-  xTaskCreate(Blink_LED,"TaskLED_BLINK",10000,NULL,1,NULL);
+  xTaskCreate(Blink_LED,"TaskLED_BLINK",1024,NULL,1,NULL);
   //xTaskCreatePinnedToCore(Task1code, "Task2", 10000, NULL, 0, NULL,  0);
    delay(500);
   xTaskCreate(Read_AHT10_INA226,"Read_AHT10_INA226",10000,NULL,5,NULL);
@@ -459,7 +482,9 @@ void setup() {
   xTaskCreate(task_read_message_from_telegramm,"task_read_message_from_telegramm",10000,NULL,6,NULL);
    delay(500);
   xTaskCreate(check_Temp_Volts_Him,"check_Temp_Volts_Him",10000,NULL,6,NULL);
-   delay(500);  
+   delay(500);
+  xTaskCreate(check_Temp_Volts_Him_12Hours,"check_Temp_Volts_Him_12Hours",10000,NULL,6,NULL);
+   delay(500);   
   ///SSH_task_start
   ///xTaskCreatePinnedToCore(sshTask, "ssh-connect", configSTACK, NULL,(tskIDLE_PRIORITY + 3), &sshHandle,portNUM_PROCESSORS); 
   ///delay(500);
@@ -470,7 +495,7 @@ void setup() {
   disp.clear();
   disp.brightness(6);  // яркость, 0 - 7 (минимум - максимум)
   ///
-  myTimer.setInterval(1200000);    // 300000 настроить интервал 1 мин = 60000ms 5мин
+  myTimer.setInterval(30000);    // 43200000 настроить интервал 1 мин = 60000ms 12ч
   ///
 
 }
