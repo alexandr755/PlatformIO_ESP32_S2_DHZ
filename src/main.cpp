@@ -8,7 +8,7 @@
 #include <WiFiMulti.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <GyverTimer.h> // подключаем библиотеку
+//#include <GyverTimer.h> // подключаем библиотеку
 #include "Wire.h"
 #include <Adafruit_AHTX0.h>
 #include "INA226.h"
@@ -51,7 +51,7 @@ int botRequestDelay = 1000; // 1000
 unsigned long lastTimeBotRan;
 ///////////
 //
-GTimer myTimer(MS);     // создать миллисекундный таймер
+///GTimer myTimer(MS);     // создать миллисекундный таймер
 // put function declarations here:
 
 const unsigned int configSTACK = 40960;
@@ -270,6 +270,9 @@ void task_read_temp(void *pvParameters)
 // чтение сообщений с телеграмм
 void task_read_message_from_telegramm(void *pvParameters)
 {
+    TickType_t xLastWakeTime;
+    // Инициализация времени последнего пробуждения
+    xLastWakeTime = xTaskGetTickCount();
   // Организуем бесконечный цикл
   while(1) {
     if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
@@ -289,7 +292,10 @@ void task_read_message_from_telegramm(void *pvParameters)
   xSemaphoreGive(xWIFIMutex);
   }
     //xQueueSend(queue_1, &temp_celsius, portMAX_DELAY);
-    vTaskDelay( 2000 / portTICK_PERIOD_MS ); 
+    //vTaskDelay( 2000 / portTICK_PERIOD_MS );
+    // Точная задержка до следующего цикла
+   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(2000));
+   
   };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -298,12 +304,15 @@ void task_read_message_from_telegramm(void *pvParameters)
 void check_Temp_Volts_Him( void *pvParameters) 
 {
   Serial.println("check_Temp_Volts_Him");
+    TickType_t xLastWakeTime;
+    // Инициализация времени последнего пробуждения
+    xLastWakeTime = xTaskGetTickCount();
     while(1) { //infinite loop
       if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-      if (temp.temperature > 23 || humidity.relative_humidity > 60 || BusVoltage < 21)
+      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 1)
       { 
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
@@ -335,7 +344,9 @@ void check_Temp_Volts_Him( void *pvParameters)
       */
      xSemaphoreGive(xWIFIMutex); 
       } 
-   vTaskDelay( 200000 / portTICK_PERIOD_MS );
+   //vTaskDelay( 330000 / portTICK_PERIOD_MS );
+   // Точная задержка до следующего цикла
+   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(330000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -344,15 +355,18 @@ void check_Temp_Volts_Him( void *pvParameters)
 void check_Temp_Volts_Him_12Hours( void *pvParameters) 
 {
   Serial.println("check_Temp_Volts_Him_12Hours");
+     TickType_t xLastWakeTime;
+    // Инициализация времени последнего пробуждения
+    xLastWakeTime = xTaskGetTickCount();
     while(1) { //infinite loop
       if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       // 43200000 настроить интервал 1 мин = 60000ms 12ч      
         sensors_event_t humidity, temp;
         aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
         BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-        if (temp.temperature < 23 || humidity.relative_humidity < 60 || BusVoltage >= 21)
+        if (temp.temperature < 23 && humidity.relative_humidity < 65 && BusVoltage >= 21)
         {
-          Serial.print("Timer is ready ");
+          Serial.print("Timer 12h is ready ");
           bot.sendMessage(CHAT_ID, "В серверной DHZ-130 все ОК", "");
           String readings = getReadings();
           bot.sendMessage(CHAT_ID, readings, "");
@@ -375,7 +389,9 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
       */
      xSemaphoreGive(xWIFIMutex); 
       } 
-   vTaskDelay( 100000 / portTICK_PERIOD_MS );
+   //vTaskDelay( 360000 / portTICK_PERIOD_MS );
+   // Точная задержка до следующего цикла
+   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(60000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -495,7 +511,7 @@ void setup() {
   disp.clear();
   disp.brightness(6);  // яркость, 0 - 7 (минимум - максимум)
   ///
-  myTimer.setInterval(30000);    // 43200000 настроить интервал 1 мин = 60000ms 12ч
+  ///myTimer.setInterval(30000);    // 43200000 настроить интервал 1 мин = 60000ms 12ч
   ///
 
 }
