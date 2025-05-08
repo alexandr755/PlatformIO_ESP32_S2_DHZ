@@ -312,7 +312,7 @@ void check_Temp_Volts_Him( void *pvParameters)
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 1)
+      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
       { 
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
@@ -391,7 +391,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
       } 
    //vTaskDelay( 360000 / portTICK_PERIOD_MS );
    // Точная задержка до следующего цикла
-   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(60000));
+   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(43200000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -413,6 +413,20 @@ void Read_AHT10_INA226( void *pvParameters)
       delay(3000);
       showFloat(disp,BusVoltage);  // Вывод дробных чисел trmperature
       disp.displayByte(3, _U);
+      if (BusVoltage <= 21) 
+      {
+        Now = millis();
+        while (millis () - Now < 3000) {    // 3 секунды
+          for (int i = 7; i > 0; i--) {
+           disp.brightness(i);   // меняем яркость
+          delay(40);
+        }
+          for (int i = 0; i < 8; i++) {
+           disp.brightness(i);   // меняем яркость
+          delay(40);
+        }
+      }
+    }
       //disp.displayByte(2, _b);
       //disp.displayByte(2, _U);	
       //disp.displayInt((int)temp.temperature);
