@@ -74,6 +74,7 @@ void getTemPHum();
 void check_AHT10andINA226()
 {
   /// проверка есть ли датчик temp@him
+
   Serial.println("Adafruit AHT10/AHT20 test!");
   if (!aht.begin())
   {
@@ -89,6 +90,7 @@ void check_AHT10andINA226()
 
   aht_humidity = aht.getHumiditySensor();
   aht_humidity->printSensorDetails();
+
     /// проверка есть ли датчик INA226
   Serial.print("SDA connect to - ");
   Serial.println(SDA);
@@ -502,8 +504,8 @@ void setup() {
     Serial.println("Ошибка создания мьютекса!");
     while (1);  // Бесконечный цикл при ошибке
   }
-  //xTaskCreate(task_print_temp,"task_print_temp",10000,NULL,3,NULL);
-  // delay(500);
+  //////xTaskCreate(task_print_temp,"task_print_temp",10000,NULL,3,NULL);
+  ////// delay(500);
   xTaskCreate(Blink_LED,"TaskLED_BLINK",1024,NULL,1,NULL);
   //xTaskCreatePinnedToCore(Task1code, "Task2", 10000, NULL, 0, NULL,  0);
    delay(500);
@@ -515,12 +517,12 @@ void setup() {
    delay(500);
   xTaskCreate(check_Temp_Volts_Him_12Hours,"check_Temp_Volts_Him_12Hours",10000,NULL,6,NULL);
    delay(500);   
-  ///SSH_task_start
-  ///xTaskCreatePinnedToCore(sshTask, "ssh-connect", configSTACK, NULL,(tskIDLE_PRIORITY + 3), &sshHandle,portNUM_PROCESSORS); 
-  ///delay(500);
-  /// READ_temp
-  //xTaskCreatePinnedToCore(task_read_temp, "task_read_temp", 10000, NULL,(tskIDLE_PRIORITY + 1), NULL,portNUM_PROCESSORS); 
-  //delay(500);
+  //////SSH_task_start
+  //////xTaskCreatePinnedToCore(sshTask, "ssh-connect", configSTACK, NULL,(tskIDLE_PRIORITY + 3), &sshHandle,portNUM_PROCESSORS); 
+  //////delay(500);
+  //////READ_temp
+  //////xTaskCreatePinnedToCore(task_read_temp, "task_read_temp", 10000, NULL,(tskIDLE_PRIORITY + 1), NULL,portNUM_PROCESSORS); 
+  //////delay(500);
   //// Init display
   disp.clear();
   disp.brightness(6);  // яркость, 0 - 7 (минимум - максимум)
@@ -537,7 +539,11 @@ void loop() {
   //Serial.println("in LOOp ");
   //delay(2000);
   //Serial.println(xPortGetCoreID());
-  //delay(1000);
+  //fadeBlink();
+  //getVoltsCurrent();
+  //delay(2000);
+  //getTemPHum();
+  //delay(2000);
   /*
   if (myTimer.isReady())
   { // Timer is complite
