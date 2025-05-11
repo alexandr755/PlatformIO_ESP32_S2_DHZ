@@ -314,7 +314,8 @@ void check_Temp_Volts_Him( void *pvParameters)
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
+      //if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
+      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage => 0)
       { 
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
@@ -346,9 +347,9 @@ void check_Temp_Volts_Him( void *pvParameters)
       */
      xSemaphoreGive(xWIFIMutex); 
       } 
-   //vTaskDelay( 330000 / portTICK_PERIOD_MS );
-   // Точная задержка до следующего цикла
-   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(330000));
+   //vTaskDelay( 360000 / portTICK_PERIOD_MS );
+   // Точная задержка до следующего цикла 6 min
+   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(360000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -357,9 +358,9 @@ void check_Temp_Volts_Him( void *pvParameters)
 void check_Temp_Volts_Him_12Hours( void *pvParameters) 
 {
   Serial.println("check_Temp_Volts_Him_12Hours");
-     TickType_t xLastWakeTime;
+     TickType_t xLastWakeTime2;
     // Инициализация времени последнего пробуждения
-    xLastWakeTime = xTaskGetTickCount();
+    xLastWakeTime2 = xTaskGetTickCount();
     while(1) { //infinite loop
       if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       // 43200000 настроить интервал 1 мин = 60000ms 12ч      
@@ -393,7 +394,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
       } 
    //vTaskDelay( 360000 / portTICK_PERIOD_MS );
    // Точная задержка до следующего цикла
-   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(43200000));
+   xTaskDelayUntil(&xLastWakeTime2, pdMS_TO_TICKS(43200000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
