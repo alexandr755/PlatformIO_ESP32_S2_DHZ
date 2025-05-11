@@ -315,7 +315,7 @@ void check_Temp_Volts_Him( void *pvParameters)
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
       //if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
-      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage => 0)
+      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
       { 
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
