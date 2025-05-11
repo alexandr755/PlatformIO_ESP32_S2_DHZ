@@ -6,7 +6,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WiFiMulti.h>
-#include <NTPClient.h>
+//#include <NTPClient.h>
 #include <WiFiUdp.h>
 //#include <GyverTimer.h> // подключаем библиотеку
 #include "Wire.h"
@@ -280,6 +280,7 @@ void task_read_message_from_telegramm(void *pvParameters)
     if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
     // Выводим сообщение в терминал
   Serial.println("task_read_message_from_telegramm: ");
+   //Serial.printf("FreeRTOS Tick Rate: %d Hz\n", configTICK_RATE_HZ); // Для Arduino/чистого FreeRTOS
   if (millis() > lastTimeBotRan + botRequestDelay)
   {
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
@@ -358,9 +359,8 @@ void check_Temp_Volts_Him( void *pvParameters)
 void check_Temp_Volts_Him_12Hours( void *pvParameters) 
 {
   Serial.println("check_Temp_Volts_Him_12Hours");
-     TickType_t xLastWakeTime2;
     // Инициализация времени последнего пробуждения
-    xLastWakeTime2 = xTaskGetTickCount();
+    TickType_t xLastWakeTime2 = xTaskGetTickCount();  // Чёткая инициализация
     while(1) { //infinite loop
       if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       // 43200000 настроить интервал 1 мин = 60000ms 12ч      
@@ -393,8 +393,8 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
      xSemaphoreGive(xWIFIMutex); 
       } 
    //vTaskDelay( 360000 / portTICK_PERIOD_MS );
-   // Точная задержка до следующего цикла
-   xTaskDelayUntil(&xLastWakeTime2, pdMS_TO_TICKS(43200000));
+   // Точная задержка до следующего цикла 43200000 = 12 hours
+   xTaskDelayUntil(&xLastWakeTime2, pdMS_TO_TICKS(1800000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
