@@ -360,7 +360,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
 {
   Serial.println("check_Temp_Volts_Him_12Hours");
     // Инициализация времени последнего пробуждения
-    TickType_t xLastWakeTime2 = xTaskGetTickCount();  // Чёткая инициализация
+    TickType_t xLastWakeTime = xTaskGetTickCount();  // Чёткая инициализация
     while(1) { //infinite loop
       if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       // 43200000 настроить интервал 1 мин = 60000ms 12ч      
@@ -394,7 +394,8 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
       } 
    //vTaskDelay( 360000 / portTICK_PERIOD_MS );
    // Точная задержка до следующего цикла 43200000 = 12 hours
-   xTaskDelayUntil(&xLastWakeTime2, pdMS_TO_TICKS(7200000));
+   //xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(7200000));
+   vTaskDelay( 7200000 / portTICK_PERIOD_MS );
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
