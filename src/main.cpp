@@ -116,7 +116,8 @@ String getReadings()
 {
   sensors_event_t humidity, temp;
   aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data INA.getBusVoltage()
-  BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+  //BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+  BusVoltage = INA.getBusVoltage();
   String message = "Temp DHZ-130: " + String(temp.temperature) + " ºC \n";
   message += "Hum DHZ-130: " + String(humidity.relative_humidity) + " % \n";
   message += "Volts_Bat DHZ-130: " + String(BusVoltage) + " V \n";
@@ -314,7 +315,8 @@ void check_Temp_Volts_Him( void *pvParameters)
       if (xSemaphoreTake(xWIFIMutex, portMAX_DELAY) == pdTRUE) {
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
-      BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+      //BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+      BusVoltage = INA.getBusVoltage();
       //if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
       if (temp.temperature > 25 || humidity.relative_humidity > 65 || BusVoltage < 21)
       { 
@@ -366,7 +368,8 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
       // 43200000 настроить интервал 1 мин = 60000ms 12ч      
         sensors_event_t humidity, temp;
         aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
-        BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+        //BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+        BusVoltage = INA.getBusVoltage();
         if (temp.temperature < 25 && humidity.relative_humidity < 65 && BusVoltage >= 21)
         {
           Serial.print("Timer 12h is ready ");
