@@ -316,7 +316,7 @@ void check_Temp_Volts_Him( void *pvParameters)
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
       BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
       //if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
-      if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
+      if (temp.temperature > 25 || humidity.relative_humidity > 65 || BusVoltage < 21)
       { 
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
@@ -367,7 +367,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
         sensors_event_t humidity, temp;
         aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
         BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-        if (temp.temperature < 23 && humidity.relative_humidity < 65 && BusVoltage >= 21)
+        if (temp.temperature < 25 && humidity.relative_humidity < 65 && BusVoltage >= 21)
         {
           Serial.print("Timer 12h is ready ");
           bot.sendMessage(CHAT_ID, "В серверной DHZ-130 все ОК", "");
@@ -394,7 +394,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
       } 
    //vTaskDelay( 360000 / portTICK_PERIOD_MS );
    // Точная задержка до следующего цикла 43200000 = 12 hours
-   xTaskDelayUntil(&xLastWakeTime2, pdMS_TO_TICKS(1800000));
+   xTaskDelayUntil(&xLastWakeTime2, pdMS_TO_TICKS(7200000));
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
