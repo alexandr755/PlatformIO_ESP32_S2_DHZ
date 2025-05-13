@@ -298,7 +298,8 @@ void task_read_message_from_telegramm(void *pvParameters)
     //xQueueSend(queue_1, &temp_celsius, portMAX_DELAY);
     //vTaskDelay( 2000 / portTICK_PERIOD_MS );
     // Точная задержка до следующего цикла
-   xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(2000));
+    //xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
+   vTaskDelay( 2000 / portTICK_PERIOD_MS );
    
   };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
@@ -318,8 +319,9 @@ void check_Temp_Volts_Him( void *pvParameters)
       //BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
       BusVoltage = INA.getBusVoltage();
       //if (temp.temperature > 23 || humidity.relative_humidity > 65 || BusVoltage < 21)
-      if (temp.temperature > 25 || humidity.relative_humidity > 65 || BusVoltage < 21)
-      { 
+      if (temp.temperature > 26 || humidity.relative_humidity > 65 || BusVoltage < 21)
+      {
+      /*   
       Serial.print("Temp: ");
       Serial.print(temp.temperature);
       Serial.print(" C");
@@ -329,6 +331,7 @@ void check_Temp_Volts_Him( void *pvParameters)
       Serial.println(" \%");
       Serial.print("BusVoltage = ");
       Serial.println(BusVoltage);
+      */
       bot.sendMessage(CHAT_ID, "Внимание! Превышены температура/влажность/батарея в DHZ-130", "");
       String readings = getReadings();
       bot.sendMessage(CHAT_ID, readings, "");
@@ -370,7 +373,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
         aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
         //BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
         BusVoltage = INA.getBusVoltage();
-        if (temp.temperature < 25 && humidity.relative_humidity < 65 && BusVoltage >= 21)
+        if (temp.temperature < 26 && humidity.relative_humidity < 65 && BusVoltage >= 21)
         {
           Serial.print("Timer 12h is ready ");
           bot.sendMessage(CHAT_ID, "В серверной DHZ-130 все ОК", "");
@@ -398,7 +401,7 @@ void check_Temp_Volts_Him_12Hours( void *pvParameters)
    //vTaskDelay( 360000 / portTICK_PERIOD_MS );
    // Точная задержка до следующего цикла 43200000 = 12 hours
    //xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(7200000));
-   vTaskDelay( 7200000 / portTICK_PERIOD_MS );
+   vTaskDelay( 43200000 / portTICK_PERIOD_MS );
    };
   // Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
   vTaskDelete(NULL);
@@ -410,8 +413,8 @@ void Read_AHT10_INA226( void *pvParameters)
     while(1) { //infinite loop
       sensors_event_t humidity, temp;
       aht.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
-      BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
-      
+      //BusVoltage = INA.getBusVoltage() - (INA.getBusVoltage() / 100 * 5.1);
+      BusVoltage = INA.getBusVoltage();
       showFloat(disp,temp.temperature);  // Вывод дробных чисел trmperature
       disp.displayByte(3, _t);
       delay(3000);
